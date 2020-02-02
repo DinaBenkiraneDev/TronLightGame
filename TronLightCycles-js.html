@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<!--
+    Auteurs :
+    Lenny SIEMENI (1055234)
+    Dina BENKIRANE(20078896)
+-->
+<meta charset="utf-8" />
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tron Light Cycles</title>
+    <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+  </head>
+  <body>
+    <h1 class="neon-font">
+      Tron Light Cycles (Motocyclettes de lumi&egrave;re de Tron)
+    </h1>
+    <div class="toolbar">
+      <fieldset>
+        <legend>Description</legend>
+        <div class="game-info-toolbar">
+          <label class="nbGames"> Partie : <span id="nbTurns">0</span></label>
+          <br />
+          <label class="nbGamesP2">
+            Nombre de victoires P2 : <span id="nbVictoriesP2">0</span>
+          </label>
+          <label class="nbGamesP1">
+            Nombre de victoires P1 : <span id="nbVictoriesP1">0</span>
+          </label>
+        </div>
+      </fieldset>
+    </div>
+    <canvas
+      id="myCanvas"
+      width="700"
+      height="700"
+      style="border:2px solid #000000;"
+    >
+    </canvas>
+    <div class="toolbar button-toolbar">
+      <button onclick="pauseGame()" class="pause">Pause</button>
+      <button onclick="launchGame()" class="go">Go</button>
+      <button onclick="restartGame()" class="restart">Restart</button>
+    </div>
+    <div class="toolbar color-pick-toolbar">
+      <div class="div1">
+        <p>Couleur du joueur 2:</p>
+        <input type="color" id="colorP2" value="#00aeff" /><br /><br />
+      </div>
+      <div class="div1">
+        <p>Couleur du joueur 1:</p>
+        <input type="color" id="colorP1" value="#ffa200" /><br /><br />
+      </div>
+    </div>
+    <div class="toolbar message-toolbar">
+      <fieldset>
+        <legend>Messages</legend>
+        <div class="tollbar2">
+          <span id="gameMessages"> &zwnj; </span>
+        </div>
+      </fieldset>
+    </div>
+
+    <script>
+      // ------------------------------------------------ Event listeners ------------------------------------------------ //
+
+      document.getElementById("colorP1").addEventListener(
+        "input",
+        function() {
+          getColor("P1");
+        },
+        false
+      );
+
+      document.getElementById("colorP2").addEventListener(
+        "input",
+        function() {
+          getColor("P2");
+        },
+        false
+      );
+
+      // Game control events
+      document.onkeydown = keyDownHandler;
+      document.onmousedown = mouseDownHandler;
+      document.onmouseup = mouseUpHandler;
+
+      // ------------------------------------------------ Creation des variables du jeu ------------------------------------------------ //
+
+      // ------------------------ Game logic variables ------------------------ //
+      const DEFAULT_GAME_SPEED = 100;
+      const MAXIMUM_TICK_NUMBER = 30; // les valeurs sont faibles expres pour montrer au demo
+      const MAXIMUM_GAME_SPEED = 20; // les valeurs sont faibles expres pour montrer au demo
+      var tick_number = 0;
+      var difficulty_level = 1;
+      var gameState = "running";
+
+      var gamePlayinterval = DEFAULT_GAME_SPEED; // in milliseconds
+      var nextFrame = false;
+
+      var nbTurns = 0;
+      var winner = null;
+      var nbVictoriesP1 = []; // array qui contient les victoires et defaites de chaque joueur pour les scores
+      var nbVictoriesP2 = []; // array qui contient les victoires et defaites de chaque joueur pour les scores
+
+      //Position cursor
+      var mouseDown_vx = 0;
+      var mouseDown_vy = 0;
+      var mouseUp_vx = 0;
+      var mouseUp_vy = 0;
+
+      // --------------- Canvas and grid variables ------------------------ //
+
+      var canvas = document.getElementById("myCanvas");
+      var C = canvas.getContext("2d");
+      var canvas_rectangle = canvas.getBoundingClientRect();
+
+      // Creates a 2D array filled with zeros
+      var create2DArray = function(numColumns, numRows) {
+        var array = [];
+        for (var c = 0; c < numColumns; c++) {
+          array.push([]); // adds an empty 1D array at the end of "array"
+          for (var r = 0; r < numRows; r++) {
+            array[c].push(0); // add zero at end of the 1D array "array[c]"
+          }
+        }
+        return array;
+      };
+
+      var cellSize = 5; // each cell in the grid is a square of this size, in pixels
+      var NUM_CELLS_HORIZONTAL = canvas.width / cellSize;
+      var NUM_CELLS_VERTICAL = canvas.height / cellSize;
+      var x0 = (canvas.width - NUM_CELLS_HORIZONTAL * cellSize) / 2;
+      var y0 = (canvas.height - NUM_CELLS_VERTICAL * cellSize) / 2;
+
+      var grid = create2DArray(NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL);
+      var grid_player_p1 = create2DArray(NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL);
+      var grid_player_p2 = create2DArray(NUM_CELLS_HORIZONTAL, NUM_CELLS_VERTICAL);
+      var CELL_EMPTY = 0;
+      var CELL_OCCUPIED = 1;
+
+
+      // Current position and direction of light cycle 1
+      var lightCycle1_x = NUM_CELLS_HORIZONTAL / 2;
+      var lightCycle1_y = NUM_CELLS_VERTICAL - 2;
+      var lightCycle1_vx = 0; // positive for right
+      var lightCycle1_vy = -1; // positive for down
+      var lightCycle1_color = "#ffa200"; //default value is orange
+      var lightCycle1_alive = true;
+
+      // Current position et direction du light cycle 2
+      var lightCycle2_x = NUM_CELLS_HORIZONTAL / 2;
+      var lightCycle2_y = 0;
+      var lightCycle2_vx = 0; // positive for right
+      var lightCycle2_vy = 1; // positive for down
+      var lightCycle2_color = "#00aeff"; //default value cyan
+      var lightCycle2_alive = true;
+
+      grid[lightCycle1_x][lightCycle1_y] = CELL_OCCUPIED; // to mark the initial grid cell as occupied
+      grid_player_p1[lightCycle1_x][lightCycle1_y]=CELL_OCCUPIED;
+      grid[lightCycle2_x][lightCycle2_y] = CELL_OCCUPIED; // to mark the initial grid cell as occupied
+      grid_player_p2[lightCycle2_x][lightCycle2_y]=CELL_OCCUPIED;
+      // ------------------------------------------------Game Mouvement--------------------------------------------------------------------------- //
+
+      function keyDownHandler(e) {
+        // console.log("keyCode: " + e.keyCode );
+        // e = e || window.event;
+
+        // Change la direction du lightcycle 1 (Joueur 1) (utilise les touches flechees)
+        if (e.keyCode === 38) {
+          // up arrow
+          lightCycle1_vx = 0;
+          lightCycle1_vy = -1;
+        } else if (e.keyCode === 40) {
+          // down arrow
+          lightCycle1_vx = 0;
+          lightCycle1_vy = 1;
+        } else if (e.keyCode === 37) {
+          // left arrow
+          lightCycle1_vy = 0;
+          lightCycle1_vx = -1;
+        } else if (e.keyCode === 39) {
+          // right arrow
+          lightCycle1_vy = 0;
+          lightCycle1_vx = 1;
+        }
+
+        // Change la direction du lightcycle 2 (utilise les touches WASD) (Joueur 2)
+        // On pourra changer plus tard pour regarder si le clavier est en mode AZERTY peut-etre ?
+        else if (e.keyCode === 87) {
+          // w : up direction
+          lightCycle2_vx = 0;
+          lightCycle2_vy = -1;
+        } else if (e.keyCode === 83) {
+          // s : down direction
+          lightCycle2_vx = 0;
+          lightCycle2_vy = 1;
+        } else if (e.keyCode === 65) {
+          // a : left direction
+          lightCycle2_vy = 0;
+          lightCycle2_vx = -1;
+        } else if (e.keyCode === 68) {
+          // d : right direction
+          lightCycle2_vy = 0;
+          lightCycle2_vx = 1;
+        }
+      }
+
+      // Function for mouse events (Only useful for player 1
+      function mouseDownHandler(e) {
+        mouseDown_vx = e.clientX;
+        mouseDown_vy = e.clientY;
+      }
+
+      // Function for mouse events (Only useful for player 1)
+      function mouseUpHandler(e) {
+        mouseUp_vx = e.clientX;
+        mouseUp_vy = e.clientY;
+        let delta_x = mouseUp_vx - mouseDown_vx;
+        let delta_y = mouseUp_vy - mouseDown_vy;
+
+        if (Math.abs(delta_x) > Math.abs(delta_y)) {
+          if (delta_x > 0) {
+            //right
+            console.log("Mouse event : right");
+            lightCycle1_vy = 0;
+            lightCycle1_vx = 1;
+          } else {
+            //left
+            console.log("Mouse event : left");
+            lightCycle1_vy = 0;
+            lightCycle1_vx = -1;
+          }
+        } else if (delta_y > 0) {
+          //down
+          console.log("Mouse event : down");
+          lightCycle1_vx = 0;
+          lightCycle1_vy = 1;
+        } else {
+          //up
+          console.log("Mouse event : up");
+          lightCycle1_vx = 0;
+          lightCycle1_vy = -1;
+        }
+      }
+
+      // ----------------------------------------------------------------------------------------------------------- //
+      // Dessine sur le canvas
+      var redraw = function() {
+        C.fillStyle = "#000000";
+        C.fillRect(0, 0, canvas.width, canvas.height);
+
+
+        //Filling light_cycle1 color
+        for (var i = 0; i < NUM_CELLS_HORIZONTAL; ++i) {
+          for (var j = 0; j < NUM_CELLS_VERTICAL; ++j) {
+            if (grid[i][j] === CELL_OCCUPIED && grid[i][j]&&grid_player_p1[i][j] === CELL_OCCUPIED && grid_player_p1[i][j]) {
+              C.fillStyle = document.getElementById("colorP1").value;
+              C.fillRect(
+                      x0 + i * cellSize + 1,
+                      y0 + j * cellSize + 1,
+                      cellSize - 2,
+                      cellSize - 2
+              );
+            }
+            if (grid[i][j] === CELL_OCCUPIED && grid[i][j]&&grid_player_p2[i][j] === CELL_OCCUPIED && grid_player_p2[i][j]) {
+              C.fillStyle = document.getElementById("colorP2").value;
+              C.fillRect(
+                      x0 + i * cellSize + 1,
+                      y0 + j * cellSize + 1,
+                      cellSize - 2,
+                      cellSize - 2
+              );
+            }
+          }
+        }
+
+        C.fillStyle = lightCycle1_alive ? lightCycle1_color : "#ffffff";
+        C.fillRect(
+          x0 + lightCycle1_x * cellSize,
+          y0 + lightCycle1_y * cellSize,
+          cellSize,
+          cellSize
+        );
+        C.fillStyle = lightCycle2_alive ? lightCycle2_color : "#ffffff";
+        C.fillRect(
+          x0 + lightCycle2_x * cellSize,
+          y0 + lightCycle2_y * cellSize,
+          cellSize,
+          cellSize
+        );
+      };
+
+      var advance = function() {
+        if (lightCycle1_alive) {
+          var new1_x = lightCycle1_x + lightCycle1_vx;
+          var new1_y = lightCycle1_y + lightCycle1_vy;
+
+          // Check for collision with grid boundaries and with trail lightcycle1
+          if (
+            new1_x < 0 ||
+            new1_x >= NUM_CELLS_HORIZONTAL ||
+            new1_y < 0 ||
+            new1_y >= NUM_CELLS_VERTICAL ||
+            grid[new1_x][new1_y] === CELL_OCCUPIED
+          ) {
+            lightCycle1_alive = false;
+          } else {
+            grid[new1_x][new1_y] = CELL_OCCUPIED;
+            grid_player_p1[new1_x][new1_y] =CELL_OCCUPIED;
+            lightCycle1_x = new1_x;
+            lightCycle1_y = new1_y;
+          }
+        }
+
+        if (lightCycle2_alive) {
+          var new2_x = lightCycle2_x + lightCycle2_vx;
+          var new2_y = lightCycle2_y + lightCycle2_vy;
+
+          // Check for collision with grid boundaries and with trail lightcycle2
+          if (
+            new2_x < 0 ||
+            new2_x >= NUM_CELLS_HORIZONTAL ||
+            new2_y < 0 ||
+            new2_y >= NUM_CELLS_VERTICAL ||
+            grid[new2_x][new2_y] === CELL_OCCUPIED
+          ) {
+            lightCycle2_alive = false;
+          } else {
+            grid[new2_x][new2_y] = CELL_OCCUPIED;
+            grid_player_p2[new2_x][new2_y] = CELL_OCCUPIED;
+            lightCycle2_x = new2_x;
+            lightCycle2_y = new2_y;
+          }
+        }
+
+        // Determine la collision simultanee
+        // on dessine volontairement 1 frame plus loin pour savoir si la collision a eu lieu entre
+        // les 2 lightcycle
+        if (!lightCycle1_alive && lightCycle2_alive && !nextFrame) {
+          nextFrame = true;
+          redraw();
+        } else if (lightCycle1_alive && !lightCycle2_alive && !nextFrame) {
+          nextFrame = true;
+          redraw();
+
+          // Cas terminaux dans tous les cas
+          // Cas ou les 2 lightcycles sont entres en collision (draw)
+        } else if (!lightCycle1_alive && !lightCycle2_alive) {
+          endGame();
+
+          // Cas ou 1 des 2 lightcycles sont entres en collision (J2 vainqueur)
+        } else if (!lightCycle1_alive && lightCycle2_alive && nextFrame) {
+          nbVictoriesP2.push(1);
+          endGame();
+          // J1 vainqueur
+        } else if (lightCycle1_alive && !lightCycle2_alive && nextFrame) {
+          nbVictoriesP1.push(1);
+          endGame();
+
+          // Pas de collision on continue
+        } else if (lightCycle1_alive && lightCycle2_alive) {
+          redraw();
+        }
+      };
+
+      // Gere l'affichage des messages correspondants et la sauvegarde des scores a la fin d'une partie
+      var endGame = function() {
+        nbTurns++;
+        winner = getWinner();
+
+        console.log("l1 = " + lightCycle1_alive + " l2= " + lightCycle2_alive);
+        console.log("winner = " + winner);
+        winner
+          ? (document.getElementById("gameMessages").innerText =
+              "TERMINE : Victoire du " + winner + "!")
+          : (document.getElementById("gameMessages").innerText = "Match Nul !");
+
+        document.getElementById("nbVictoriesP1").innerText =
+          nbVictoriesP1.length;
+        document.getElementById("nbVictoriesP2").innerText =
+          nbVictoriesP2.length;
+        document.getElementById("nbTurns").innerText = nbTurns;
+        gameState = "done";
+        clearTimeout(run);
+      };
+
+      // Retorune le vainqueur (ou non) dependemment de la situation
+      var getWinner = function() {
+        // Both players are dead
+        if (!(lightCycle1_alive || lightCycle2_alive)) {
+          return false;
+        } else if (lightCycle1_alive) {
+          return "Joueur 1";
+        } else if (lightCycle2_alive) {
+          return "Joueur 2";
+        }
+      };
+
+      // Permet de mettre le jeu en pause
+      var pauseGame = function() {
+        if (gameState == "running") {
+          gameState = "pause";
+          console.log("Game State : " + gameState);
+          document.getElementById("gameMessages").innerText = " JEU EN PAUSE ";
+        }
+      };
+
+      // Permet de (re)-lancer le jeu
+      var launchGame = function() {
+        if (gameState == "pause" || gameState == "done") {
+          gameState = "running";
+          document.getElementById("nbTurns").innerText = nbTurns;
+          document.getElementById("gameMessages").innerText = " \u200C ";
+          run();
+        } else {
+          //do nothing
+        }
+      };
+
+      // Permet de redemarrer une partie a tout moment, meme si une partie est en cours
+      var restartGame = function() {
+        if (!(gamePlayinterval == DEFAULT_GAME_SPEED)) {
+          gamePlayinterval = DEFAULT_GAME_SPEED;
+        }
+        document.getElementById("gameMessages").innerText = " \u200C ";
+        resetGameParameters();
+        launchGame();
+      };
+
+      // Incremente la vitesse du jeu apres un certain nombre d'iterations
+      var increaseGameSpeed = function() {
+        if (
+          tick_number == MAXIMUM_TICK_NUMBER &&
+          gamePlayinterval >= MAXIMUM_GAME_SPEED
+        ) {
+          difficulty_level++;
+          document.getElementById("gameMessages").innerText =
+            " NIVEAU : " + difficulty_level;
+          gamePlayinterval = gamePlayinterval - 20;
+          tick_number = 0;
+        }
+        tick_number++;
+      };
+
+      // Reinitialise la position des joueurs en vue de relancer une partie
+      var resetGameParameters = function() {
+        tick_number = 0;
+        difficulty_level = 1;
+        gamePlayinterval = DEFAULT_GAME_SPEED;
+        lightCycle1_x = NUM_CELLS_HORIZONTAL / 2;
+        lightCycle1_y = NUM_CELLS_VERTICAL - 2;
+        lightCycle1_vx = 0; // positive for right
+        lightCycle1_vy = -1; // positive for down
+        lightCycle1_alive = true;
+
+        lightCycle2_x = NUM_CELLS_HORIZONTAL / 2;
+        lightCycle2_y = 0;
+        lightCycle2_vx = 0; // positive for right
+        lightCycle2_vy = 1; // positive for down
+        lightCycle2_alive = true;
+
+        nextFrame = false;
+
+        for (l = 0; l < NUM_CELLS_HORIZONTAL; l++) {
+          for (h = 0; h < NUM_CELLS_VERTICAL; h++) {
+            grid[l][h] = CELL_EMPTY;
+            grid_player_p1[l][h] = CELL_EMPTY;
+            grid_player_p2[l][h] = CELL_EMPTY;
+
+          }
+        }
+        grid[lightCycle1_x][lightCycle1_y] = CELL_OCCUPIED;
+        grid_player_p1[lightCycle1_x][lightCycle1_y] = CELL_OCCUPIED;
+        grid[lightCycle2_x][lightCycle2_y] = CELL_OCCUPIED;
+        grid_player_p2[lightCycle2_x][lightCycle2_y] = CELL_OCCUPIED;
+      };
+
+      // Recupere la couleur selectionnee dans le nuancer du code HTML et l'affecte au joueur correspondant
+      var getColor = function(player) {
+        if (player == "P1") {
+          lightCycle1_color = document.getElementById("colorP1").value;
+        } else if (player == "P2") {
+          lightCycle2_color = document.getElementById("colorP2").value;
+        }
+      };
+
+      function run() {
+        if (gameState === "running") {
+          advance();
+          console.log(
+            "Game State : " +
+              gameState +
+              ", Speed : " +
+              gamePlayinterval +
+              " ms, Clock Tick : " +
+              tick_number
+          );
+          increaseGameSpeed();
+          setTimeout(run, gamePlayinterval);
+        } else {
+          clearTimeout();
+          return;
+        }
+      }
+      run();
+    </script>
+  </body>
+  <footer id="footer">
+    <ul>
+      Auteurs
+      <li>Lenny SIEMENI (1055234)</li>
+      <li>Dina BENKIRANE()</li>
+    </ul>
+    <p>Département d'informatique et recherche opérationnelle</p>
+    <a href="https://diro.umontreal.ca/accueil/"
+      ><img
+        class="udem-logo"
+        src="images/15_DIRO_LOGO_NB_modif.png"
+        width="195px"
+        height="38px"
+    /></a>
+
+    <a href="https://www.umontreal.ca/"
+      ><img
+        class="udem-logo"
+        src="images/UdeM_logo_Blanc.png"
+        width="195px"
+        height="92px"
+    /></a>
+  </footer>
+</html>

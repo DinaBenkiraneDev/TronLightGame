@@ -1,0 +1,177 @@
+/*
+    Auteurs :
+      Lenny SIEMENI (1055234)
+      Dina BENKIRANE()
+*/
+
+html body {
+  background-color: #222222;
+  background: repeating-linear-gradient(
+      45deg,
+      #2b2b2b 0%,
+      #2b2b2b 10%,
+      #222222 0%,
+      #222222 50%
+    )
+    0 / 15px 15px;
+  color: aliceblue;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+  font-size: 60px;
+}
+
+.toolbar {
+  display: block;
+  margin: auto;
+  width: 60%;
+  height: 20%;
+  text-align: center;
+  font-weight: bold;
+  padding: 0.5%;
+}
+
+fieldset legend {
+  font-size: 25px;
+}
+
+.game-info-toolbar {
+  display: block;
+  left: 0;
+  right: 0;
+  top: 0;
+  font-weight: bold;
+  padding: 0.5%;
+  height: 10%;
+  font-size: 25px;
+}
+
+.nbGames {
+  text-align: center;
+  display: inline-block;
+}
+
+.nbGamesP1 {
+  float: right;
+}
+
+.nbGamesP2 {
+  float: left;
+}
+
+#myCanvas {
+  border: cyan;
+  border-style: solid;
+  border-radius: 3px;
+  border-width: 5px;
+  padding-left: 0;
+  padding-right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+.button-toolbar {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 1%;
+  padding-bottom: 1%;
+  margin: auto;
+  display: block;
+  text-align: center;
+  width: 50%;
+}
+
+button {
+  display: inline-block;
+  padding: 15px 25px;
+  font-size: 24px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  outline: none;
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 9px rgb(22, 182, 158);
+}
+
+button:hover {
+  background-color: #3e8e41;
+}
+
+button:active {
+  background-color: #3e8e41;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+.pause {
+  background-color: #e19512;
+}
+
+.go {
+  background-color: #4caf50;
+}
+
+.restart {
+  background-color: #f4511e;
+}
+
+.color-pick-toolbar {
+  height: 10%;
+}
+
+.div1 {
+  display: inline-block;
+  width: 20%;
+  height: 100%;
+}
+
+.message-toolbar {
+  height: 200px;
+}
+
+#gameMessages {
+  display: block;
+  text-align: center;
+  width: 50%;
+  margin: auto;
+  font-size: 32px;
+}
+
+#footer {
+  width: 100%;
+  text-align: center;
+  margin: auto;
+}
+
+/* ---------------------------------- Footer Rules ---------------------------------- */
+
+footer {
+  padding-top: 1em;
+  text-align: center;
+  color: white;
+  background-color: #2d2e2e;
+}
+
+footer ul {
+  width: 10%;
+  text-align: center;
+  display: block;
+  margin: auto;
+}
+
+img.udem-logo {
+  display: inline-block;
+}
+
+footer a {
+  color: white;
+}
+
+footer img {
+  vertical-align: middle;
+  border-style: none;
+}
